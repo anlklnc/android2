@@ -42,6 +42,7 @@
             android:id="@+id/scr_chat_panel"
             android:layout_width="match_parent"
             android:layout_height="@dimen/camera_chat_panel_height"
+            android:layout_marginBottom="20dp"
             android:layout_gravity="bottom|center_horizontal"
             tools:ignore="UselessParent"
             >

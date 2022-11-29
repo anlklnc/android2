@@ -1,6 +1,7 @@
 package com.anilkilinc.superlivetutorial.video
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.hardware.Camera
 import android.os.Build
 import android.os.Bundle
@@ -13,6 +14,7 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.WindowInsets
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
@@ -76,13 +78,20 @@ class VideoActivity : AppCompatActivity() {
         }
 
         //todo recycler view or list view
+        val scrollView = binding.linChatPanel.parent as ScrollView
         vm.message.observe(this) {
             if (it.size > 0) {
                 val tw = TextView(this, null)
                 tw.text = it[it.size-1]
+                tw.setTextColor(Color.WHITE)
                 binding.linChatPanel.addView(tw)
+                scrollView.post {
+                    scrollView.fullScroll(View.FOCUS_DOWN)
+                }
             }
         }
+
+        setLocalViewDrag()
 
         runBlocking {
             launch {
@@ -185,7 +194,7 @@ class VideoActivity : AppCompatActivity() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun initCamera() {
+    private fun setLocalViewDrag() {
         mPreview = binding.surfaceLocal
 
         //calculate how many pixels camera view can be moved in the screen
@@ -208,14 +217,10 @@ class VideoActivity : AppCompatActivity() {
         vm.cameraY.observe(this){
             cameraFrame.y = it
         }
-/*
+
         mPreview?.setOnTouchListener { view, motionEvent ->
             vm.handleTouchEvent(motionEvent, cameraFrame.x, cameraFrame.y);
             true
-        }
-       */
-        mPreview?.setOnClickListener {
-            Log.i(TAG, "initCamera: ->")
         }
     }
 
