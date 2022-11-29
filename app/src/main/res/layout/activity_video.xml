@@ -10,16 +10,13 @@
     <!-- The primary full-screen view. This can be replaced with whatever view
          is needed to present your content, e.g. VideoView, SurfaceView,
          TextureView, etc. -->
-    <TextView
-        android:id="@+id/fullscreen_content"
+    <SurfaceView
+        android:id="@+id/surface_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center"
+        android:layout_gravity="bottom"
         android:keepScreenOn="true"
-        android:text="@string/dummy_content"
-        android:textColor="?attr/fullscreenTextColor"
-        android:textSize="50sp"
-        android:textStyle="bold" />
+        />
 
     <!-- This FrameLayout insets its children based on system windows using
          android:fitsSystemWindows. -->
@@ -29,10 +26,17 @@
         android:fitsSystemWindows="true">
 
         <FrameLayout
-            android:id="@+id/fr_camera"
+            android:id="@+id/fr_surface"
             android:layout_width="@dimen/camera_preview_width"
             android:layout_height="@dimen/camera_preview_height"
-            />
+            android:padding="2dp"
+            android:background="@color/white">
+            <SurfaceView
+                android:id="@+id/surface_local"
+                android:layout_width="@dimen/camera_preview_width"
+                android:layout_height="@dimen/camera_preview_height"
+                />
+        </FrameLayout>
 
         <ScrollView
             android:id="@+id/scr_chat_panel"

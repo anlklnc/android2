@@ -7,16 +7,27 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.MotionEvent
+import android.view.SurfaceView
 import android.view.View
 import android.view.WindowInsets
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.anilkilinc.superlivetutorial.Constants
 import com.anilkilinc.superlivetutorial.R
 import com.anilkilinc.superlivetutorial.databinding.ActivityVideoBinding
 import dagger.hilt.android.AndroidEntryPoint
+import io.agora.rtc2.ChannelMediaOptions
+import io.agora.rtc2.IRtcEngineEventHandler
+import io.agora.rtc2.RtcEngine
+import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.video.VideoCanvas
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.util.*
 
 
 /**
@@ -26,14 +37,18 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class VideoActivity : AppCompatActivity() {
 
+    val TAG = "!!!"
     private lateinit var binding: ActivityVideoBinding
     private lateinit var vm:VideoViewModel
-    private lateinit var fullscreenContent: TextView
+    private lateinit var fullscreenContent: SurfaceView
     private lateinit var fullscreenContentControls: LinearLayout
     private val hideHandler = Handler(Looper.myLooper()!!)
 
     private var mCamera: Camera? = null
-    private var mPreview: CameraPreview? = null
+    private var mPreview: SurfaceView? = null
+
+    var videoEngine:RtcEngine? = null
+    var isJoined = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +62,7 @@ class VideoActivity : AppCompatActivity() {
         isFullscreen = true
 
         // Set up the user interaction to manually show or hide the system UI.
-        fullscreenContent = binding.fullscreenContent
+        fullscreenContent = binding.surfaceMain
         fullscreenContent.setOnClickListener { toggle() }
 
         fullscreenContentControls = binding.fullscreenContentControls
@@ -55,27 +70,123 @@ class VideoActivity : AppCompatActivity() {
         // Upon interacting with UI controls, delay any scheduled hide()
         // operations to prevent the jarring behavior of controls going away
         // while interacting with the UI.
-        binding.dummyButton.setOnTouchListener(delayHideTouchListener)
+//        binding.dummyButton.setOnTouchListener(delayHideTouchListener)
+        binding.dummyButton.setOnClickListener {
+            joinChannel()
+        }
 
+        //todo recycler view or list view
         vm.message.observe(this) {
             if (it.size > 0) {
                 val tw = TextView(this, null)
                 tw.text = it[it.size-1]
-                binding.linChatPanel.addView(tw, 0)
+                binding.linChatPanel.addView(tw)
             }
         }
 
-        initCamera()
+        runBlocking {
+            launch {
+                initVideoEngine()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        videoEngine?.stopPreview()
+        videoEngine?.leaveChannel()
+
+        // Destroy the engine in a sub-thread to avoid congestion
+        runBlocking { // this: CoroutineScope
+            launch { // launch a new coroutine and continue
+                RtcEngine.destroy()
+                videoEngine = null
+            }
+        }
+    }
+
+    private fun initVideoEngine() {
+        try {
+            val config = RtcEngineConfig();
+            config.mContext = getBaseContext();
+            config.mAppId = Constants.APP_ID;
+            config.mEventHandler = mRtcEventHandler;
+            videoEngine = RtcEngine.create(config);
+            // By default, the video module is disabled, call enableVideo to enable it.
+            videoEngine?.enableVideo();
+        } catch (e:Exception) {
+            Log.e(TAG, e.toString());
+        }
+    }
+
+    private val mRtcEventHandler: IRtcEngineEventHandler = object : IRtcEngineEventHandler() {
+        // Listen for the remote host joining the channel to get the uid of the host.
+        override fun onUserJoined(uid: Int, elapsed: Int) {
+            Log.i(TAG,"Remote user joined $uid")
+
+            // Set the remote video view
+            runOnUiThread { setupRemoteVideo(uid) }
+        }
+
+        override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
+            isJoined = true
+            Log.i(TAG,"Joined Channel $channel")
+        }
+
+        override fun onUserOffline(uid: Int, reason: Int) {
+            Log.i(TAG,"Remote user offline $uid $reason")
+            runOnUiThread { binding.surfaceMain.setVisibility(View.GONE) }
+        }
+    }
+
+    private fun setupRemoteVideo(uid: Int) {
+        var remoteVideoView = binding.surfaceMain
+//        remoteVideoView.setZOrderMediaOverlay(true)
+        videoEngine?.setupRemoteVideo(
+            VideoCanvas(
+                remoteVideoView,
+                VideoCanvas.RENDER_MODE_FIT,
+                uid
+            )
+        )
+        // Display RemoteSurfaceView.
+        remoteVideoView.setVisibility(View.VISIBLE)
+    }
+
+    private fun setupLocalVideo() {
+        var localVideoView = binding.surfaceLocal
+        // Pass the SurfaceView object to Agora so that it renders the local video.
+        videoEngine?.setupLocalVideo(
+            VideoCanvas(
+                localVideoView,
+                VideoCanvas.RENDER_MODE_HIDDEN,
+                0
+            )
+        )
+    }
+
+    private fun joinChannel() {
+        val options = ChannelMediaOptions()
+
+        // For a Video call, set the channel profile as COMMUNICATION.
+        options.channelProfile = io.agora.rtc2.Constants.CHANNEL_PROFILE_COMMUNICATION
+        // Set the client role as BROADCASTER or AUDIENCE according to the scenario.
+        options.clientRoleType = io.agora.rtc2.Constants.CLIENT_ROLE_BROADCASTER
+        // Display LocalSurfaceView.
+        setupLocalVideo()
+        binding.surfaceMain.visibility = View.VISIBLE
+        // Start local preview.
+        videoEngine?.startPreview()
+        // Join the channel with a temp token.
+        // You need to specify the user ID yourself, and ensure that it is unique in the channel.
+        var id = Random().nextInt()
+        videoEngine?.joinChannel(null, Constants.ROOM_ID, id, options)
+
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun initCamera() {
-
-        mCamera = getCameraInstance()
-        mPreview = mCamera?.let {
-            // Create our Preview view
-            CameraPreview(this, it)
-        }
+    private fun initCamera() {
+        mPreview = binding.surfaceLocal
 
         //calculate how many pixels camera view can be moved in the screen
         val displayMetrics = DisplayMetrics()
@@ -87,11 +198,7 @@ class VideoActivity : AppCompatActivity() {
         val xLimit = screenWidth - viewWidth
         val yLimit = screenHeight - viewHeight
 
-        val cameraFrame = binding.frCamera
-        // Set the Preview view as the content of our activity.
-        mPreview?.also {
-            cameraFrame.addView(it)
-        }
+        val cameraFrame = binding.frSurface
 
         vm.setCameraParams(xLimit, yLimit)
 
@@ -101,12 +208,17 @@ class VideoActivity : AppCompatActivity() {
         vm.cameraY.observe(this){
             cameraFrame.y = it
         }
-
+/*
         mPreview?.setOnTouchListener { view, motionEvent ->
             vm.handleTouchEvent(motionEvent, cameraFrame.x, cameraFrame.y);
             true
         }
+       */
+        mPreview?.setOnClickListener {
+            Log.i(TAG, "initCamera: ->")
+        }
     }
+
 
     @SuppressLint("InlinedApi")
     private val hidePart2Runnable = Runnable {
