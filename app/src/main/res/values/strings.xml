@@ -1,3 +1,15 @@
 <resources>
+    <!-- App -->
     <string name="app_name">SuperliveTutorial</string>
+    <string name="title_activity_video">Video Chat</string>
+
+    <!-- StartActivity -->
+    <string name="request_video_permission_message">"Camera permission is needed for video chat. Please proceed to the permission settings page to grant the required permission."</string>
+    <string name="start_button">Start Video Chat</string>
+    <string name="proceed_button">Proceed</string>
+    <string name="cancel_button">Cancel</string>
+
+    <!-- VideoActivity -->
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">VIDEO\nCONTENT</string>
 </resources>
