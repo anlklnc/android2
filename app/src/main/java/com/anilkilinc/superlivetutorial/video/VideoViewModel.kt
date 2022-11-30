@@ -15,6 +15,8 @@ import javax.inject.Inject
 @HiltViewModel
 class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
 
+    val TAG = this::class.java.simpleName
+
     private var drag = false
     private var startX = 0
     private var startY = 0
@@ -53,7 +55,7 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
             }
         }
     }
-    fun <T> MutableLiveData<MutableList<T>>.add(item: T) {
+    private fun <T> MutableLiveData<MutableList<T>>.add(item: T) {
         if(this.value == null) {
             this.value = mutableListOf()
         }
@@ -68,7 +70,7 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
         this.yLimit = yLimit
     }
 
-    fun handleTouchEvent(motionEvent: MotionEvent, x:Float, y:Float) {
+    fun handleTouchEvent(motionEvent: MotionEvent, x:Float?, y:Float?) {
         if(cameraX.value == -1f) {
             cameraX.value = x
             cameraY.value = y

@@ -10,6 +10,7 @@
     <string name="cancel_button">Cancel</string>
 
     <!-- VideoActivity -->
-    <string name="dummy_button">Dummy Button</string>
-    <string name="dummy_content">VIDEO\nCONTENT</string>
+    <string name="join_button">Join Channel</string>
+    <string name="message_button">Message</string>
+    <string name="gift_button">Gift</string>
 </resources>
