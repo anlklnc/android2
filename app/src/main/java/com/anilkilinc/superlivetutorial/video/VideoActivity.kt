@@ -68,23 +68,23 @@ class VideoActivity : AppCompatActivity() {
 
         binding.etMessage.setOnEditorActionListener { textView, actionId, keyEvent ->
             if (actionId == EditorInfo.IME_ACTION_SEND) {
-                appendMesssage(textView.text.toString())
+                val text = textView.text.toString()
                 binding.etMessage.text.clear()
+
                 //hide keyboard
-                val inputManager: InputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                inputManager.hideSoftInputFromWindow(
-                    this.currentFocus!!.windowToken,
-                    InputMethodManager.HIDE_NOT_ALWAYS
-                )
+                hideKeyboard()
+
+                //rtm
+                vm.onClickSendChannelMsg(text)
             }
             true
         }
 
         //todo recycler view or list view
         scrollView = binding.linChatPanel.parent as ScrollView
-        vm.message.observe(this) {
+        vm.messageList.observe(this) {
             if (it.size > 0) {
-                var text = it[it.size-1]
+                val text = it[it.size-1]
                 appendMesssage(text)
             }
         }
@@ -120,6 +120,14 @@ class VideoActivity : AppCompatActivity() {
                 videoEngine = null
             }
         }
+    }
+
+    private fun hideKeyboard() {
+        val inputManager: InputMethodManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        inputManager.hideSoftInputFromWindow(
+            this.currentFocus!!.windowToken,
+            InputMethodManager.HIDE_NOT_ALWAYS
+        )
     }
 
     private fun initVideoEngine() {
@@ -171,17 +179,19 @@ class VideoActivity : AppCompatActivity() {
     }
 
     private fun setupLocalVideo() {
-        var localVideoView = binding.surfaceLocal
+        val localVideoView = binding.surfaceLocal
         // Pass the SurfaceView object to Agora so that it renders the local video.
         videoEngine?.setupLocalVideo(
             VideoCanvas(
                 localVideoView,
                 VideoCanvas.RENDER_MODE_HIDDEN,
-                0
+                id
             )
         )
+        localVideoView.bringToFront()
     }
 
+    var id = 0
     private fun joinChannel() {
         val options = ChannelMediaOptions()
 
@@ -195,18 +205,21 @@ class VideoActivity : AppCompatActivity() {
         videoEngine?.startPreview()
         // Join the channel with a temp token.
         // You need to specify the user ID yourself, and ensure that it is unique in the channel.
-        var id = Random().nextInt()
+        id = Random().nextInt()
         videoEngine?.joinChannel(null, Constants.ROOM_ID, id, options)
 
         //change bottom views
         binding.btnJoin.visibility = View.GONE
         binding.etMessage.visibility = View.VISIBLE
         binding.fabGift.visibility = View.VISIBLE
+
+        vm.initRtmService(this, id.toString())
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setLocalViewDrag() {
         localPreview = binding.surfaceLocal
+        val layout = binding.surfaceLocal.parent as View
 
         //calculate how many pixels camera view can be moved in the screen
         val displayMetrics = DisplayMetrics()
@@ -221,10 +234,10 @@ class VideoActivity : AppCompatActivity() {
         vm.setCameraParams(xLimit, yLimit)
 
         vm.cameraX.observe(this) {
-            localPreview?.x = it
+            layout.x = it
         }
         vm.cameraY.observe(this){
-            localPreview?.y = it
+            layout.y = it
         }
 
         localPreview?.setOnTouchListener { view, motionEvent ->

@@ -6,28 +6,34 @@
     android:layout_height="match_parent"
     android:background="?attr/fullscreenBackgroundColor"
     android:theme="@style/ThemeOverlay.SuperliveTutorial.FullscreenContainer"
-    tools:context=".video.VideoActivity">
+    tools:context=".video.VideoActivity"
+    >
 
     <SurfaceView
         android:id="@+id/surface_main"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="bottom"
-        android:keepScreenOn="true"
         android:visibility="gone"
-        android:layout_marginTop="50dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         />
 
-    <SurfaceView
-        android:id="@+id/surface_local"
-        android:layout_width="@dimen/camera_preview_width"
-        android:layout_height="@dimen/camera_preview_height"
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:background="@color/white"
+        >
+        <SurfaceView
+            android:id="@+id/surface_local"
+            android:layout_width="@dimen/camera_preview_width"
+            android:layout_height="@dimen/camera_preview_height"
+            />
+    </FrameLayout>
 
     <ScrollView
         android:id="@+id/scr_chat_panel"
