@@ -5,10 +5,8 @@ import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.anilkilinc.superlivetutorial.Constants
 import com.anilkilinc.superlivetutorial.Repo
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.agora.rtm.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -17,6 +15,8 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
 
     val TAG = this::class.java.simpleName
 
+    lateinit var provider:RtmServiceProvider
+
     private var drag = false
     private var startX = 0
     private var startY = 0
@@ -24,12 +24,6 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
     private var totalY = 0
     private var xLimit = 0
     private var yLimit = 0
-
-    // client instance
-    private var mRtmClient: RtmClient? = null
-
-    // channel instance
-    private var mRtmChannel: RtmChannel? = null
 
     val cameraX: MutableLiveData<Float> by lazy {
         MutableLiveData<Float>()
@@ -127,89 +121,41 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
         }
     }
 
-    fun initRtmService(context:Context, uid:String) {
-        val listener = object : RtmClientListener {
-            override fun onConnectionStateChanged(p0: Int, p1: Int) {}
-            override fun onTokenExpired() {}
-            override fun onTokenPrivilegeWillExpire() {}
-            override fun onPeersOnlineStatusChanged(p0: MutableMap<String, Int>?) {}
-            override fun onMessageReceived(p0: RtmMessage?, p1: String?) {
-                onMessageReceived(p0?.text ?: "?", p1.toString())
-            }
-        }
+    fun joinRtmService(context:Context, uid:String) {
+        viewModelScope.launch {
+            provider = RtmServiceProvider(context, object : RtmListener{
+                override fun onError(text: String) {
+                    viewModelScope.launch {
+                        messageList.add(text)
+                    }
+                }
 
-        try {
-            mRtmClient = RtmClient.createInstance(context, Constants.APP_ID, listener);
+                override fun onMessageReceived(userId: String, text: String) {
+                    viewModelScope.launch {
+                        if (text.startsWith(".//")) {
 
-            mRtmClient!!.login(null, uid, object : ResultCallback<Void?> {
-                override fun onSuccess(responseInfo: Void?) {}
-                override fun onFailure(errorInfo: ErrorInfo) {
-                    val text: CharSequence =
-                        "User: " + uid.toString() + " failed to log in to Signaling!" + errorInfo.toString()
+                        } else if (text.startsWith("***")) {
+                            val output = text.substring(3)
+                        }
+                        messageList.add("$userId: $text")
+                    }
+                }
+
+                override fun onMessageSent(text: String) {
+                    viewModelScope.launch {
+                        messageList.add(text)
+                    }
                 }
             })
 
-            val mRtmChannelListener: RtmChannelListener = object : RtmChannelListener {
-                override fun onMemberCountUpdated(i: Int) {}
-                override fun onAttributesUpdated(list: List<RtmChannelAttribute>) {}
-                override fun onMessageReceived(message: RtmMessage, fromMember: RtmChannelMember) {
-                    onMessageReceived(fromMember.userId, message.text)
-                }
-                override fun onMemberJoined(member: RtmChannelMember) {}
-                override fun onMemberLeft(member: RtmChannelMember) {}
-            }
-
-            // Create an <Vg k="MESS" /> channel
-            mRtmChannel = mRtmClient?.createChannel(Constants.ROOM_ID, mRtmChannelListener)
-
-            // Join the <Vg k="MESS" /> channel
-            mRtmChannel!!.join(object : ResultCallback<Void?> {
-                override fun onSuccess(responseInfo: Void?) {}
-                override fun onFailure(errorInfo: ErrorInfo) {
-                    val text: CharSequence = "User: $uid failed to join the channel!$errorInfo"
-                }
-            })
-
-        } catch (e:Exception) {
-            e.printStackTrace()
+            provider.join(uid)
         }
     }
 
     // Button to send channel message
     fun onClickSendChannelMsg(text:String) {
-
-        // Create <Vg k="MESS" /> message instance
-        val message = mRtmClient!!.createMessage()
-        message.text = text
-
-        // Send message to channel
-        mRtmChannel!!.sendMessage(message, object : ResultCallback<Void?> {
-            override fun onSuccess(aVoid: Void?) {
-                onMessageSent(message.text)
-            }
-
-            override fun onFailure(errorInfo: ErrorInfo) {
-                val text = """Message fails to send to channel ${mRtmChannel!!.id} Error: $errorInfo"""
-                onError(text)
-            }
-        })
-    }
-
-    fun onError(text:String) {
         viewModelScope.launch {
-            messageList.add(text)
-        }
-    }
-
-    fun onMessageReceived(userId: String, text: String) {
-        viewModelScope.launch {
-            messageList.add("$userId: $text")
-        }
-    }
-
-    fun onMessageSent(text: String) {
-        viewModelScope.launch {
-            messageList.add(text)
+            provider.sendMessage(text)
         }
     }
 }

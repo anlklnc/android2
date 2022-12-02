@@ -213,7 +213,7 @@ class VideoActivity : AppCompatActivity() {
         binding.etMessage.visibility = View.VISIBLE
         binding.fabGift.visibility = View.VISIBLE
 
-        vm.initRtmService(this, id.toString())
+        vm.joinRtmService(this, id.toString())
     }
 
     @SuppressLint("ClickableViewAccessibility")
