@@ -13,9 +13,8 @@ import javax.inject.Inject
 @HiltViewModel
 class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
 
-    val TAG = this::class.java.simpleName
-
-    lateinit var provider:RtmServiceProvider
+    lateinit var rtmProvider:RtmServiceProvider
+    lateinit var rtcProvider:RtcServiceProvider
 
     private var drag = false
     private var startX = 0
@@ -51,6 +50,59 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
         this.value = updatedItems
     }
 
+
+    fun initRtcService(context:Context, listener: RtcListener) {
+        rtcProvider = RtcServiceProvider(context, listener)
+    }
+
+    fun joinRtcService() {
+        rtcProvider.joinChannel()
+    }
+
+    fun joinRtmService(context:Context, uid:String) {
+        viewModelScope.launch {
+            rtmProvider = RtmServiceProvider(context, object : RtmListener{
+                override fun onError(text: String) {
+                    viewModelScope.launch {
+                        messageList.add(text)
+                    }
+                }
+
+                override fun onMessageReceived(userId: String, text: String) {
+                    viewModelScope.launch {
+                        if (text.startsWith(".//")) {
+
+                        } else if (text.startsWith("***")) {
+                            val output = text.substring(3)
+                        }
+                        messageList.add("$userId: $text")
+                    }
+                }
+
+                override fun onMessageSent(text: String) {
+                    viewModelScope.launch {
+                        messageList.add(text)
+                    }
+                }
+            })
+
+            rtmProvider.join(uid)
+        }
+    }
+
+    fun onClickSendChannelMsg(text:String) {
+        viewModelScope.launch {
+            rtmProvider.sendMessage(text)
+        }
+    }
+
+    fun onDestroy() {
+        rtcProvider.stop()
+        // Destroy the engine in a sub-thread to avoid congestion
+        viewModelScope.launch {
+            rtcProvider.destroy()
+        }
+    }
 
     fun setCameraParams(xLimit:Int, yLimit:Int) {
         this.xLimit = xLimit
@@ -118,44 +170,6 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
                     }
                 }
             }
-        }
-    }
-
-    fun joinRtmService(context:Context, uid:String) {
-        viewModelScope.launch {
-            provider = RtmServiceProvider(context, object : RtmListener{
-                override fun onError(text: String) {
-                    viewModelScope.launch {
-                        messageList.add(text)
-                    }
-                }
-
-                override fun onMessageReceived(userId: String, text: String) {
-                    viewModelScope.launch {
-                        if (text.startsWith(".//")) {
-
-                        } else if (text.startsWith("***")) {
-                            val output = text.substring(3)
-                        }
-                        messageList.add("$userId: $text")
-                    }
-                }
-
-                override fun onMessageSent(text: String) {
-                    viewModelScope.launch {
-                        messageList.add(text)
-                    }
-                }
-            })
-
-            provider.join(uid)
-        }
-    }
-
-    // Button to send channel message
-    fun onClickSendChannelMsg(text:String) {
-        viewModelScope.launch {
-            provider.sendMessage(text)
         }
     }
 }

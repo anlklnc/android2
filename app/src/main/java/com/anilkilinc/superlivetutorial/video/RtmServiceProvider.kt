@@ -6,7 +6,7 @@ import io.agora.rtm.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class RtmServiceProvider constructor(context: Context, val listener:RtmListener){
+class RtmServiceProvider(context: Context, val listener:RtmListener){
 
     // client instance
     private var mRtmClient: RtmClient? = null

@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.os.Bundle
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.SurfaceView
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -14,17 +13,11 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
-import com.anilkilinc.superlivetutorial.Constants
 import com.anilkilinc.superlivetutorial.R
 import com.anilkilinc.superlivetutorial.databinding.ActivityVideoBinding
 import dagger.hilt.android.AndroidEntryPoint
-import io.agora.rtc2.ChannelMediaOptions
-import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
-import io.agora.rtc2.RtcEngineConfig
 import io.agora.rtc2.video.VideoCanvas
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.util.*
 
 
@@ -42,9 +35,6 @@ class VideoActivity : AppCompatActivity() {
     private var localPreview: SurfaceView? = null
     private lateinit var scrollView: ScrollView
 
-    var videoEngine:RtcEngine? = null
-    var isJoined = false
-
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,7 +45,7 @@ class VideoActivity : AppCompatActivity() {
         supportActionBar?.hide()
 
         binding.btnJoin.setOnClickListener {
-            joinChannel()
+            vm.joinRtcService()
         }
 
         val builder: AlertDialog.Builder = this.let {
@@ -90,12 +80,57 @@ class VideoActivity : AppCompatActivity() {
         }
 
         setLocalViewDrag()
+        initRtcService()
+    }
 
-        runBlocking {
-            launch {
-                initVideoEngine()
+    private fun initRtcService() {
+        vm.initRtcService(baseContext, object : RtcListener{
+            override fun setupRemoteVideoView(engine: RtcEngine?, uid: Int) {
+                runOnUiThread {
+                    val remoteVideoView = binding.surfaceMain
+//                    remoteVideoView.setZOrderMediaOverlay(true)
+                    engine?.setupRemoteVideo(
+                        VideoCanvas(
+                            remoteVideoView,
+                            VideoCanvas.RENDER_MODE_FIT,
+                            uid
+                        )
+                    )
+                    // Display RemoteSurfaceView.
+                    remoteVideoView.visibility = View.VISIBLE
+                }
             }
-        }
+
+            override fun hideRemoteVideoView() {
+                runOnUiThread { binding.surfaceMain.visibility = View.GONE }
+            }
+
+            override fun setupLocalVideoView(engine: RtcEngine?, uid: Int) {
+                runOnUiThread{
+                    val localVideoView = binding.surfaceLocal
+                    // Pass the SurfaceView object to Agora so that it renders the local video.
+                    engine?.setupLocalVideo(
+                        VideoCanvas(
+                            localVideoView,
+                            VideoCanvas.RENDER_MODE_FIT,
+                            uid
+                        )
+                    )
+                    localVideoView.bringToFront()
+                }
+            }
+
+            override fun onJoinedChannel(id: Int) {
+                vm.joinRtmService(baseContext, id.toString())
+
+                runOnUiThread{
+                    binding.btnJoin.visibility = View.GONE
+                    binding.etMessage.visibility = View.VISIBLE
+                    binding.fabGift.visibility = View.VISIBLE
+                }
+
+            }
+        })
     }
 
     private fun appendMesssage(text:String) {
@@ -110,16 +145,7 @@ class VideoActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        videoEngine?.stopPreview()
-        videoEngine?.leaveChannel()
-
-        // Destroy the engine in a sub-thread to avoid congestion
-        runBlocking { // this: CoroutineScope
-            launch { // launch a new coroutine and continue
-                RtcEngine.destroy()
-                videoEngine = null
-            }
-        }
+        vm.onDestroy()
     }
 
     private fun hideKeyboard() {
@@ -128,92 +154,6 @@ class VideoActivity : AppCompatActivity() {
             this.currentFocus!!.windowToken,
             InputMethodManager.HIDE_NOT_ALWAYS
         )
-    }
-
-    private fun initVideoEngine() {
-        try {
-            val config = RtcEngineConfig()
-            config.mContext = this
-            config.mAppId = Constants.APP_ID
-            config.mEventHandler = mRtcEventHandler
-            videoEngine = RtcEngine.create(config)
-            // By default, the video module is disabled, call enableVideo to enable it.
-            videoEngine?.enableVideo()
-        } catch (e:Exception) {
-            Log.e(TAG, e.toString())
-        }
-    }
-
-    private val mRtcEventHandler: IRtcEngineEventHandler = object : IRtcEngineEventHandler() {
-        // Listen for the remote host joining the channel to get the uid of the host.
-        override fun onUserJoined(uid: Int, elapsed: Int) {
-            Log.i(TAG,"Remote user joined $uid")
-
-            // Set the remote video view
-            runOnUiThread { setupRemoteVideo(uid) }
-        }
-
-        override fun onJoinChannelSuccess(channel: String, uid: Int, elapsed: Int) {
-            isJoined = true
-            Log.i(TAG,"Joined Channel $channel")
-        }
-
-        override fun onUserOffline(uid: Int, reason: Int) {
-            Log.i(TAG,"Remote user offline $uid $reason")
-            runOnUiThread { binding.surfaceMain.setVisibility(View.GONE) }
-        }
-    }
-
-    private fun setupRemoteVideo(uid: Int) {
-        var remoteVideoView = binding.surfaceMain
-//        remoteVideoView.setZOrderMediaOverlay(true)
-        videoEngine?.setupRemoteVideo(
-            VideoCanvas(
-                remoteVideoView,
-                VideoCanvas.RENDER_MODE_FIT,
-                uid
-            )
-        )
-        // Display RemoteSurfaceView.
-        remoteVideoView.setVisibility(View.VISIBLE)
-    }
-
-    private fun setupLocalVideo() {
-        val localVideoView = binding.surfaceLocal
-        // Pass the SurfaceView object to Agora so that it renders the local video.
-        videoEngine?.setupLocalVideo(
-            VideoCanvas(
-                localVideoView,
-                VideoCanvas.RENDER_MODE_HIDDEN,
-                id
-            )
-        )
-        localVideoView.bringToFront()
-    }
-
-    var id = 0
-    private fun joinChannel() {
-        val options = ChannelMediaOptions()
-
-        // For a Video call, set the channel profile as COMMUNICATION.
-        options.channelProfile = io.agora.rtc2.Constants.CHANNEL_PROFILE_COMMUNICATION
-        // Set the client role as BROADCASTER or AUDIENCE according to the scenario.
-        options.clientRoleType = io.agora.rtc2.Constants.CLIENT_ROLE_BROADCASTER
-        // Display LocalSurfaceView.
-        setupLocalVideo()
-        // Start local preview.
-        videoEngine?.startPreview()
-        // Join the channel with a temp token.
-        // You need to specify the user ID yourself, and ensure that it is unique in the channel.
-        id = Random().nextInt()
-        videoEngine?.joinChannel(null, Constants.ROOM_ID, id, options)
-
-        //change bottom views
-        binding.btnJoin.visibility = View.GONE
-        binding.etMessage.visibility = View.VISIBLE
-        binding.fabGift.visibility = View.VISIBLE
-
-        vm.joinRtmService(this, id.toString())
     }
 
     @SuppressLint("ClickableViewAccessibility")
