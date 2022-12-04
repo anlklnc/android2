@@ -2,7 +2,6 @@ package com.anilkilinc.superlivetutorial.video
 
 import android.annotation.SuppressLint
 import android.app.Dialog
-import android.graphics.Color
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.view.SurfaceView
@@ -10,10 +9,7 @@ import android.view.View
 import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.ImageView
-import android.widget.ScrollView
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
@@ -37,11 +33,8 @@ class VideoActivity : AppCompatActivity() {
     val TAG = this::class.java.simpleName
     private lateinit var binding: ActivityVideoBinding
     private lateinit var vm:VideoViewModel
-
     private var localPreview: SurfaceView? = null
-    private lateinit var scrollView: ScrollView
-
-    var b = true
+    lateinit var adapter:ArrayAdapter<String>
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,17 +47,6 @@ class VideoActivity : AppCompatActivity() {
 
         binding.btnJoin.setOnClickListener {
             vm.joinRtcService()
-/*
-            appendMesssage("Lorem Ipsum")
-            appendMesssage("dolor sit amet")
-            appendMesssage("consectetur adipiscing elit")
-            appendMesssage("sed do eiusmod tempor")
-            appendMesssage("incididunt ut labore")
-            appendMesssage("et dolore magna aliqua")
-            appendMesssage("Ut enim ad minim veniam")
-            appendMesssage("quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat")
-
- */
         }
 
         val builder: AlertDialog.Builder = this.let {
@@ -90,9 +72,6 @@ class VideoActivity : AppCompatActivity() {
             true
         }
 
-        //todo recycler view or list view
-        scrollView = binding.linChatPanel.parent as ScrollView
-
         setLocalViewDrag()
         initObservers()
         initRtcService()
@@ -112,7 +91,7 @@ class VideoActivity : AppCompatActivity() {
 
         vm.chatVisible.observe(this) {
             val alpha = if(it) 0.8f else 0.0f
-            binding.scrChatPanel.animate().alpha(alpha).setDuration(if(it)200 else 500)
+            binding.listChat.animate().alpha(alpha).setDuration(if(it)200 else 500)
         }
     }
 
@@ -193,20 +172,19 @@ class VideoActivity : AppCompatActivity() {
                     binding.btnJoin.visibility = View.GONE
                     binding.etMessage.visibility = View.VISIBLE
                     binding.fabGift.visibility = View.VISIBLE
-                }
 
+                    adapter = ArrayAdapter<String>(
+                        this@VideoActivity,
+                        R.layout.item_list, android.R.id.text1, vm.messageList.value!!
+                    )
+                    binding.listChat.adapter = adapter
+                }
             }
         })
     }
 
     private fun appendMesssage(text:String) {
-        val tw = TextView(this, null)
-        tw.text = text
-        tw.setTextColor(Color.WHITE)
-        binding.linChatPanel.addView(tw)
-        scrollView.post {
-            scrollView.fullScroll(View.FOCUS_DOWN)
-        }
+        adapter.notifyDataSetChanged()
     }
 
     override fun onDestroy() {

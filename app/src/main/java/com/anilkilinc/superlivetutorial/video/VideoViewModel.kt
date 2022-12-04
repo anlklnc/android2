@@ -56,12 +56,10 @@ class VideoViewModel @Inject constructor():ViewModel() {
         cameraX.value = -1f
         chatVisible.value = false
         gson = GsonBuilder().create()
+        messageList.value = mutableListOf()
     }
 
     private fun <T> MutableLiveData<MutableList<T>>.add(item: T) {
-        if(this.value == null) {
-            this.value = mutableListOf()
-        }
         val updatedItems = this.value as ArrayList
         updatedItems.add(item)
         this.value = updatedItems
@@ -127,13 +125,16 @@ class VideoViewModel @Inject constructor():ViewModel() {
         receivedGift.value = giftId
     }
 
+    var showPanelCount = 0
     private fun updateMessageList(text:String) {
         messageList.add(text)
         chatVisible.value = true;
         if (!keyboardOpen) {
             viewModelScope.launch {
+                showPanelCount++
                 delay(4000)
-                if (!keyboardOpen) {
+                showPanelCount--
+                if(showPanelCount == 0 && !keyboardOpen) {
                     chatVisible.value = false;
                 }
             }
