@@ -10,7 +10,9 @@
     <string name="cancel_button">Cancel</string>
 
     <!-- VideoActivity -->
-    <string name="join_button">Join Channel</string>
+    <string name="join_button">JOIN CHANNEL</string>
     <string name="message_button">Message</string>
     <string name="gift_button">Gift</string>
+    <string name="snackbar_gift_show">SHOW</string>
+    <string name="snackbar_gift_info">Gift Received</string>
 </resources>

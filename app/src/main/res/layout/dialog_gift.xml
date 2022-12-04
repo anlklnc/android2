@@ -13,18 +13,24 @@
 
         <Button
             android:id="@+id/btn_3"
-            style="@style/xstyle"
-            android:foreground="@drawable/ic_baseline_attach_money_24"/>
+            style="@style/gift_button"
+            android:foreground="@drawable/ic_baseline_attach_money_24"
+            android:tag="Dollar"
+            />
 
         <Button
             android:id="@+id/btn_1"
-            style="@style/xstyle"
-            android:foreground="@drawable/ic_baseline_euro_24"/>
+            style="@style/gift_button"
+            android:foreground="@drawable/ic_baseline_euro_24"
+            android:tag="Euro"
+            />
 
         <Button
             android:id="@+id/btn_2"
-            style="@style/xstyle"
-            android:foreground="@drawable/ic_baseline_currency_bitcoin_24"/>
+            style="@style/gift_button"
+            android:foreground="@drawable/ic_baseline_currency_bitcoin_24"
+            android:tag="Bitcoin"
+            />
     </LinearLayout>
 
 

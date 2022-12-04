@@ -9,9 +9,11 @@
         <item name="android:buttonBarStyle">?android:attr/buttonBarStyle</item>
     </style>
 
-    <style name="xstyle">
+    <style name="gift_button">
         <item name="android:layout_width">90dp</item>
         <item name="android:layout_height">90dp</item>
         <item name="android:layout_margin">10dp</item>
+        <item name="android:backgroundTint">@color/pink_x</item>
+        <item name="android:onClick">sendGift</item>
     </style>
 </resources>

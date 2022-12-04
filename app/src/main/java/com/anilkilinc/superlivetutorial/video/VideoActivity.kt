@@ -1,20 +1,25 @@
 package com.anilkilinc.superlivetutorial.video
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.graphics.Color
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.view.SurfaceView
 import android.view.View
+import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import com.anilkilinc.superlivetutorial.Message
 import com.anilkilinc.superlivetutorial.R
 import com.anilkilinc.superlivetutorial.databinding.ActivityVideoBinding
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.video.VideoCanvas
@@ -49,11 +54,12 @@ class VideoActivity : AppCompatActivity() {
         }
 
         val builder: AlertDialog.Builder = this.let {
-            AlertDialog.Builder(it).setView(R.layout.dialog_gift)
+            AlertDialog.Builder(it).setView(R.layout.dialog_gift).setIcon(R.drawable.ic_baseline_diamond_24)
         }
 
         binding.fabGift.setOnClickListener {
-            builder.create().show()
+            var dialog = builder.create()
+            dialog.show()
         }
 
         binding.etMessage.setOnEditorActionListener { textView, actionId, keyEvent ->
@@ -79,8 +85,45 @@ class VideoActivity : AppCompatActivity() {
             }
         }
 
+        vm.receivedGift.observe(this) {
+            receiveGift(it)
+        }
+
         setLocalViewDrag()
         initRtcService()
+    }
+
+    fun sendGift(view:View) {
+        vm.onClickSendGift(view.tag.toString())
+    }
+
+    var snack:Snackbar? = null
+    private fun receiveGift(giftId:String) {
+        if(snack != null && snack!!.isShown) {
+            return
+        }
+        snack = Snackbar.make(binding.fabGift, getString(R.string.snackbar_gift_info), Snackbar.LENGTH_SHORT)
+            .setAction(getString(R.string.snackbar_gift_show), ){
+                var drawable = 0
+                when(giftId) {
+                    Message.GIFT_TYPE_1 -> {
+                        drawable = R.drawable.ic_baseline_attach_money_24
+                    }
+                    Message.GIFT_TYPE_2 -> {
+                        drawable = R.drawable.ic_baseline_euro_24
+                    }
+                    Message.GIFT_TYPE_3 -> {
+                        drawable = R.drawable.ic_baseline_currency_bitcoin_24
+                    }
+                }
+                val dialog = Dialog(this)
+                dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+                dialog.setContentView(R.layout.dialog_image)
+                val iw = dialog.findViewById<ImageView>(R.id.iw_gift)
+                iw?.setImageResource(drawable)
+                dialog.show()
+            }
+        snack?.show()
     }
 
     private fun initRtcService() {

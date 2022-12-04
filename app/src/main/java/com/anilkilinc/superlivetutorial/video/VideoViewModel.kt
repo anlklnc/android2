@@ -5,16 +5,20 @@ import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.anilkilinc.superlivetutorial.Repo
+import com.anilkilinc.superlivetutorial.Message
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
+class VideoViewModel @Inject constructor():ViewModel() {
 
     lateinit var rtmProvider:RtmServiceProvider
     lateinit var rtcProvider:RtcServiceProvider
+    var gson:Gson
 
     private var drag = false
     private var startX = 0
@@ -36,9 +40,15 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
         MutableLiveData<MutableList<String>>()
     }
 
+    val receivedGift:MutableLiveData<String> by lazy {
+        MutableLiveData<String>()
+    }
+
     init {
         cameraX.value = -1f
         cameraX.value = -1f
+
+        gson = GsonBuilder().create()
     }
 
     private fun <T> MutableLiveData<MutableList<T>>.add(item: T) {
@@ -60,7 +70,7 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
     }
 
     fun joinRtmService(context:Context, uid:String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             rtmProvider = RtmServiceProvider(context, object : RtmListener{
                 override fun onError(text: String) {
                     viewModelScope.launch {
@@ -68,20 +78,21 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
                     }
                 }
 
-                override fun onMessageReceived(userId: String, text: String) {
+                override fun onMessageReceived(userId: String, messageJson: String) {
                     viewModelScope.launch {
-                        if (text.startsWith(".//")) {
-
-                        } else if (text.startsWith("***")) {
-                            val output = text.substring(3)
-                        }
-                        messageList.add("$userId: $text")
+                        var message = getMessage(messageJson)
+                        handleIncomingMessage(message, userId)
                     }
                 }
 
-                override fun onMessageSent(text: String) {
+                override fun onMessageSent(messageJson: String) {
                     viewModelScope.launch {
-                        messageList.add(text)
+                        val message = getMessage(messageJson)
+                        var displayMessage = message.text
+                        if(message.type == Message.MESSAGE_TYPE_GIFT) {
+                            displayMessage = "Gift sent: " + displayMessage
+                        }
+                        messageList.add(displayMessage)
                     }
                 }
             })
@@ -90,9 +101,38 @@ class VideoViewModel @Inject constructor(private val repo: Repo):ViewModel() {
         }
     }
 
+    private fun getMessage(text:String):Message {
+        return gson.fromJson(text, Message::class.java)
+    }
+
+    fun handleIncomingMessage(message: Message, userId: String) {
+        when(message.type){
+            Message.MESSAGE_TYPE_CHAT -> {
+                messageList.add("$userId: ${message.text}")
+            }
+            Message.MESSAGE_TYPE_GIFT -> {
+                displayGiftReceived(message.text)
+            }
+        }
+    }
+
+    private fun displayGiftReceived(giftId: String) {
+        receivedGift.value = giftId
+    }
+
     fun onClickSendChannelMsg(text:String) {
+        val message = Message(text, Message.MESSAGE_TYPE_CHAT)
+        val json = gson.toJson(message, Message::class.java)
         viewModelScope.launch {
-            rtmProvider.sendMessage(text)
+            rtmProvider.sendMessage(json)
+        }
+    }
+
+    fun onClickSendGift(giftId:String) {
+        val message = Message(giftId, Message.MESSAGE_TYPE_GIFT)
+        val json = gson.toJson(message, Message::class.java)
+        viewModelScope.launch {
+            rtmProvider.sendMessage(json)
         }
     }
 
