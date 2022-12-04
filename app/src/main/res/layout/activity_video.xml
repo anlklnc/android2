@@ -40,9 +40,14 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/camera_chat_panel_height"
         android:layout_gravity="bottom|center_horizontal"
+        android:paddingTop="10dp"
         app:layout_constraintBottom_toTopOf="@+id/lin_channel_actions"
         tools:ignore="UselessParent"
-        tools:layout_editor_absoluteX="16dp">
+        tools:layout_editor_absoluteX="16dp"
+        android:background="@color/text_part_background"
+        android:alpha="0.0"
+        tools:alpha="0.8"
+        >
 
         <LinearLayout
             android:id="@+id/lin_chat_panel"
@@ -60,6 +65,7 @@
         android:paddingBottom="10dp"
         app:layout_constraintBottom_toBottomOf="parent"
         android:orientation="horizontal"
+        android:background="@color/text_part_background"
         >
         <Button
             android:id="@+id/btn_join"

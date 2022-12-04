@@ -13,6 +13,7 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
@@ -40,6 +41,8 @@ class VideoActivity : AppCompatActivity() {
     private var localPreview: SurfaceView? = null
     private lateinit var scrollView: ScrollView
 
+    var b = true
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,6 +54,17 @@ class VideoActivity : AppCompatActivity() {
 
         binding.btnJoin.setOnClickListener {
             vm.joinRtcService()
+/*
+            appendMesssage("Lorem Ipsum")
+            appendMesssage("dolor sit amet")
+            appendMesssage("consectetur adipiscing elit")
+            appendMesssage("sed do eiusmod tempor")
+            appendMesssage("incididunt ut labore")
+            appendMesssage("et dolore magna aliqua")
+            appendMesssage("Ut enim ad minim veniam")
+            appendMesssage("quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat")
+
+ */
         }
 
         val builder: AlertDialog.Builder = this.let {
@@ -58,7 +72,7 @@ class VideoActivity : AppCompatActivity() {
         }
 
         binding.fabGift.setOnClickListener {
-            var dialog = builder.create()
+            val dialog = builder.create()
             dialog.show()
         }
 
@@ -78,6 +92,13 @@ class VideoActivity : AppCompatActivity() {
 
         //todo recycler view or list view
         scrollView = binding.linChatPanel.parent as ScrollView
+
+        setLocalViewDrag()
+        initObservers()
+        initRtcService()
+    }
+
+    private fun initObservers() {
         vm.messageList.observe(this) {
             if (it.size > 0) {
                 val text = it[it.size-1]
@@ -86,11 +107,13 @@ class VideoActivity : AppCompatActivity() {
         }
 
         vm.receivedGift.observe(this) {
-            receiveGift(it)
+            onGiftReceived(it)
         }
 
-        setLocalViewDrag()
-        initRtcService()
+        vm.chatVisible.observe(this) {
+            val alpha = if(it) 0.8f else 0.0f
+            binding.scrChatPanel.animate().alpha(alpha).setDuration(if(it)200 else 500)
+        }
     }
 
     fun sendGift(view:View) {
@@ -98,12 +121,12 @@ class VideoActivity : AppCompatActivity() {
     }
 
     var snack:Snackbar? = null
-    private fun receiveGift(giftId:String) {
+    private fun onGiftReceived(giftId:String) {
         if(snack != null && snack!!.isShown) {
             return
         }
         snack = Snackbar.make(binding.fabGift, getString(R.string.snackbar_gift_info), Snackbar.LENGTH_SHORT)
-            .setAction(getString(R.string.snackbar_gift_show), ){
+            .setAction(getString(R.string.snackbar_gift_show)){
                 var drawable = 0
                 when(giftId) {
                     Message.GIFT_TYPE_1 -> {
@@ -227,5 +250,9 @@ class VideoActivity : AppCompatActivity() {
             vm.handleTouchEvent(motionEvent, localPreview?.x, localPreview?.y);
             true
         }
+    }
+
+    private fun display(text:String) {
+        Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
     }
 }

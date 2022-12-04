@@ -19,4 +19,5 @@
     <color name="platinum">#E5E4E2</color>
     <color name="blue_gray">#98AFC7</color>
     <color name="metallic_silver">#BCC6CC</color>
+    <color name="text_part_background">#50000000</color>
 </resources>

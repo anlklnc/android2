@@ -10,6 +10,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -28,6 +29,8 @@ class VideoViewModel @Inject constructor():ViewModel() {
     private var xLimit = 0
     private var yLimit = 0
 
+    private var keyboardOpen = false
+
     val cameraX: MutableLiveData<Float> by lazy {
         MutableLiveData<Float>()
     }
@@ -44,10 +47,14 @@ class VideoViewModel @Inject constructor():ViewModel() {
         MutableLiveData<String>()
     }
 
+    val chatVisible:MutableLiveData<Boolean> by lazy {
+        MutableLiveData<Boolean>()
+    }
+
     init {
         cameraX.value = -1f
         cameraX.value = -1f
-
+        chatVisible.value = false
         gson = GsonBuilder().create()
     }
 
@@ -74,7 +81,7 @@ class VideoViewModel @Inject constructor():ViewModel() {
             rtmProvider = RtmServiceProvider(context, object : RtmListener{
                 override fun onError(text: String) {
                     viewModelScope.launch {
-                        messageList.add(text)
+                        updateMessageList(text)
                     }
                 }
 
@@ -92,7 +99,7 @@ class VideoViewModel @Inject constructor():ViewModel() {
                         if(message.type == Message.MESSAGE_TYPE_GIFT) {
                             displayMessage = "Gift sent: " + displayMessage
                         }
-                        messageList.add(displayMessage)
+                        updateMessageList(displayMessage)
                     }
                 }
             })
@@ -108,7 +115,7 @@ class VideoViewModel @Inject constructor():ViewModel() {
     fun handleIncomingMessage(message: Message, userId: String) {
         when(message.type){
             Message.MESSAGE_TYPE_CHAT -> {
-                messageList.add("$userId: ${message.text}")
+                updateMessageList("$userId: ${message.text}")
             }
             Message.MESSAGE_TYPE_GIFT -> {
                 displayGiftReceived(message.text)
@@ -120,10 +127,23 @@ class VideoViewModel @Inject constructor():ViewModel() {
         receivedGift.value = giftId
     }
 
+    private fun updateMessageList(text:String) {
+        messageList.add(text)
+        chatVisible.value = true;
+        if (!keyboardOpen) {
+            viewModelScope.launch {
+                delay(4000)
+                if (!keyboardOpen) {
+                    chatVisible.value = false;
+                }
+            }
+        }
+    }
+
     fun onClickSendChannelMsg(text:String) {
         val message = Message(text, Message.MESSAGE_TYPE_CHAT)
         val json = gson.toJson(message, Message::class.java)
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             rtmProvider.sendMessage(json)
         }
     }
@@ -131,8 +151,21 @@ class VideoViewModel @Inject constructor():ViewModel() {
     fun onClickSendGift(giftId:String) {
         val message = Message(giftId, Message.MESSAGE_TYPE_GIFT)
         val json = gson.toJson(message, Message::class.java)
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             rtmProvider.sendMessage(json)
+        }
+    }
+
+    fun onKeyboardOpen() {
+        keyboardOpen = true
+        chatVisible.value = true
+    }
+
+    fun onKeyboardClose() {
+        keyboardOpen = false
+        viewModelScope.launch {
+            delay(4000)
+            chatVisible.value = false
         }
     }
 
