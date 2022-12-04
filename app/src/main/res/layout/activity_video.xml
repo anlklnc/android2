@@ -46,6 +46,7 @@
         app:layout_constraintBottom_toTopOf="@+id/lin_channel_actions"
         tools:ignore="UselessParent"
         android:background="@color/text_part_background"
+        android:transcriptMode="alwaysScroll"
         android:alpha="0.0"
         tools:alpha="0.8"
         >
