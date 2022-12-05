@@ -1,12 +1,15 @@
 package com.anilkilinc.superlivetutorial.video
 
 import android.content.Context
+import android.util.Log
 import com.anilkilinc.superlivetutorial.Constants
 import io.agora.rtm.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class RtmServiceProvider(context: Context, val listener:RtmListener){
+
+    val TAG = "!!!"
 
     // client instance
     private var mRtmClient: RtmClient? = null
@@ -59,9 +62,12 @@ class RtmServiceProvider(context: Context, val listener:RtmListener){
 
         // Join the <Vg k="MESS" /> channel
         mRtmChannel!!.join(object : ResultCallback<Void?> {
-            override fun onSuccess(responseInfo: Void?) {}
+            override fun onSuccess(responseInfo: Void?) {
+                Log.i(TAG, "join success")
+            }
             override fun onFailure(errorInfo: ErrorInfo) {
                 val text: CharSequence = "User: $uid failed to join the channel!$errorInfo"
+                Log.i(TAG, "join fail")
             }
         })
     }
@@ -82,5 +88,12 @@ class RtmServiceProvider(context: Context, val listener:RtmListener){
                 listener.onError(text)
             }
         })
+    }
+
+    fun destroy() {
+        mRtmChannel?.leave(null)
+        mRtmClient?.logout(null)
+        mRtmChannel = null
+        mRtmClient = null
     }
 }

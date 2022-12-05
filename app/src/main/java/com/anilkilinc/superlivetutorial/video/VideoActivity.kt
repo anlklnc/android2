@@ -2,8 +2,10 @@ package com.anilkilinc.superlivetutorial.video
 
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.graphics.Rect
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.SurfaceView
 import android.view.View
 import android.view.Window
@@ -30,7 +32,6 @@ import java.util.*
 @AndroidEntryPoint
 class VideoActivity : AppCompatActivity() {
 
-    val TAG = this::class.java.simpleName
     private lateinit var binding: ActivityVideoBinding
     private lateinit var vm:VideoViewModel
     private var localPreview: SurfaceView? = null
@@ -75,6 +76,7 @@ class VideoActivity : AppCompatActivity() {
         setLocalViewDrag()
         initObservers()
         initRtcService()
+        setKeyboardListener()
     }
 
     private fun initObservers() {
@@ -129,7 +131,7 @@ class VideoActivity : AppCompatActivity() {
     }
 
     private fun initRtcService() {
-        vm.initRtcService(baseContext, object : RtcListener{
+        vm.initRtcService(this, object : RtcListener{
             override fun setupRemoteVideoView(engine: RtcEngine?, uid: Int) {
                 runOnUiThread {
                     val remoteVideoView = binding.surfaceMain
@@ -166,7 +168,7 @@ class VideoActivity : AppCompatActivity() {
             }
 
             override fun onJoinedChannel(id: Int) {
-                vm.joinRtmService(baseContext, id.toString())
+                vm.joinRtmService(this@VideoActivity, id.toString())
 
                 runOnUiThread{
                     binding.btnJoin.visibility = View.GONE
@@ -199,6 +201,35 @@ class VideoActivity : AppCompatActivity() {
             InputMethodManager.HIDE_NOT_ALWAYS
         )
     }
+
+    private fun setKeyboardListener() {
+        // ContentView is the root view of the layout of this activity/fragment
+        binding.root.viewTreeObserver.addOnGlobalLayoutListener {
+            val r = Rect()
+            binding.root.getWindowVisibleDisplayFrame(r);
+            val screenHeight = binding.root.rootView.height;
+
+            // r.bottom is the position above soft keypad or device button.
+            // if keypad is shown, the r.bottom is smaller than that before.
+            val keypadHeight = screenHeight - r.bottom;
+
+            Log.d("!!!", "keypadHeight = $keypadHeight");
+
+            if (keypadHeight > screenHeight * 0.15) { // 0.15 ratio is perhaps enough to determine keypad height.
+                // keyboard is opened
+                if (!vm.isKeyboardOpen) {
+                    vm.onKeyboardOpen()
+                }
+            }
+            else {
+                // keyboard is closed
+                if (vm.isKeyboardOpen) {
+                    vm.onKeyboardClose()
+                }
+            }
+        }
+    }
+
 
     @SuppressLint("ClickableViewAccessibility")
     private fun setLocalViewDrag() {

@@ -7,11 +7,10 @@ import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.RtcEngineConfig
-import java.util.*
 
 class RtcServiceProvider(context: Context, val listener: RtcListener){
 
-    val TAG = this::class.java.simpleName
+    val TAG = "!!!"
     var videoEngine: RtcEngine? = null
     var isJoined = false
 
@@ -48,9 +47,8 @@ class RtcServiceProvider(context: Context, val listener: RtcListener){
         }
     }
 
-    fun joinChannel() {
+    fun joinChannel(userId:Int) {
         // You need to specify the user ID yourself, and ensure that it is unique in the channel.
-        val userId = Random().nextInt()
         val options = ChannelMediaOptions()
         // For a Video call, set the channel profile as COMMUNICATION.
         options.channelProfile = io.agora.rtc2.Constants.CHANNEL_PROFILE_COMMUNICATION

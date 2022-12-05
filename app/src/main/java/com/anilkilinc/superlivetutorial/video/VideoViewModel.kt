@@ -1,25 +1,28 @@
 package com.anilkilinc.superlivetutorial.video
 
 import android.content.Context
+import android.util.Log
 import android.view.MotionEvent
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anilkilinc.superlivetutorial.Message
 import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.random.Random
 
 @HiltViewModel
-class VideoViewModel @Inject constructor():ViewModel() {
+class VideoViewModel @Inject constructor(val gson:Gson):ViewModel() {
 
-    lateinit var rtmProvider:RtmServiceProvider
+    val TAG = "!!!"
+
     lateinit var rtcProvider:RtcServiceProvider
-    var gson:Gson
+    lateinit var rtmProvider:RtmServiceProvider
+    var userId = -1
 
     private var drag = false
     private var startX = 0
@@ -29,7 +32,7 @@ class VideoViewModel @Inject constructor():ViewModel() {
     private var xLimit = 0
     private var yLimit = 0
 
-    private var keyboardOpen = false
+    var isKeyboardOpen = false
 
     val cameraX: MutableLiveData<Float> by lazy {
         MutableLiveData<Float>()
@@ -52,10 +55,10 @@ class VideoViewModel @Inject constructor():ViewModel() {
     }
 
     init {
+        userId = Random.nextInt(100)
         cameraX.value = -1f
         cameraX.value = -1f
         chatVisible.value = false
-        gson = GsonBuilder().create()
         messageList.value = mutableListOf()
     }
 
@@ -71,7 +74,8 @@ class VideoViewModel @Inject constructor():ViewModel() {
     }
 
     fun joinRtcService() {
-        rtcProvider.joinChannel()
+        Log.i(TAG, "userid: $userId")
+        rtcProvider.joinChannel(userId)
     }
 
     fun joinRtmService(context:Context, uid:String) {
@@ -101,7 +105,6 @@ class VideoViewModel @Inject constructor():ViewModel() {
                     }
                 }
             })
-
             rtmProvider.join(uid)
         }
     }
@@ -129,15 +132,8 @@ class VideoViewModel @Inject constructor():ViewModel() {
     private fun updateMessageList(text:String) {
         messageList.add(text)
         chatVisible.value = true;
-        if (!keyboardOpen) {
-            viewModelScope.launch {
-                showPanelCount++
-                delay(4000)
-                showPanelCount--
-                if(showPanelCount == 0 && !keyboardOpen) {
-                    chatVisible.value = false;
-                }
-            }
+        if (!isKeyboardOpen) {
+            startChatPanelDelay()
         }
     }
 
@@ -158,15 +154,23 @@ class VideoViewModel @Inject constructor():ViewModel() {
     }
 
     fun onKeyboardOpen() {
-        keyboardOpen = true
+        isKeyboardOpen = true
         chatVisible.value = true
     }
 
     fun onKeyboardClose() {
-        keyboardOpen = false
+        isKeyboardOpen = false
+        startChatPanelDelay()
+    }
+
+    private fun startChatPanelDelay() {
         viewModelScope.launch {
+            showPanelCount++
             delay(4000)
-            chatVisible.value = false
+            showPanelCount--
+            if(showPanelCount == 0 && !isKeyboardOpen) {
+                chatVisible.value = false;
+            }
         }
     }
 
@@ -175,6 +179,7 @@ class VideoViewModel @Inject constructor():ViewModel() {
         // Destroy the engine in a sub-thread to avoid congestion
         viewModelScope.launch {
             rtcProvider.destroy()
+            rtmProvider.destroy()
         }
     }
 
